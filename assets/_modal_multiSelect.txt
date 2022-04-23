@@ -1,0 +1,111 @@
+                        <!-- Modal Procesos-->
+                        <div class="modal fade" id="kt_modal_procesos" tabindex="-1" role="dialog" aria-labelledby="modalCenter" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Detalle De Procesos</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <!--begin::TableSimple-->
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Proceso</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="modalProcesos">
+                                            </tbody>
+                                        </table>
+                                        <!--end::TableSimple-->
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        return `<button type="button" class="btn btn-bold btn-label-brand btn-sm" data-toggle="modal" data-target="#kt_modal_procesos" data-infoprocesos="`+serRes+`">Procesos</button>
+
+$('#kt_modal_procesos').on('show.bs.modal', function (event) {
+
+var button = $(event.relatedTarget); // Button that triggered the modal
+var iAuProc = button.data('infoprocesos'); // Extract info from data-* attributes
+
+handleGetProcesos(iAuProc);
+})
+
+$('#kt_modal_procesos').on('hidden.bs.modal', function (e) {
+var modal = $(this);
+modal.find('#modalProcesos').empty();
+})
+
+//== Get info from AU Records
+var handleGetProcesos = function(iAuProc) {
+
+var getDataRegistroDetalle = new FormData();
+getDataRegistroDetalle.append('type', "auProgProcesos");
+getDataRegistroDetalle.append('auid', iAuProc);
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+        // Typical action to be performed when the document is ready:
+        var resultado = xhttp.responseText;
+        //console.log(resultado);
+        document.getElementById("modalProcesos").innerHTML = resultado;
+    }
+};
+
+xhttp.open("POST", "enginex/auditorias/c_generalGetData.php");
+xhttp.send(getDataRegistroDetalle);
+
+}
+
+case "auProgProcesos":
+
+$auid = mysqli_real_escape_string($condb, $_POST['auid']);
+
+try{
+    // Q
+    $qData = mysqli_query($condb, "SELECT
+    IFNULL(alcanceAuditoria, '0') as alcanceAuditoria
+    FROM au_prog_multi
+    WHERE id_au_programacion_auditoria = '$auid'
+    ");
+
+    $row_qData = mysqli_fetch_assoc($qData);
+    $proc = $row_qData['alcanceAuditoria'];
+
+    if ($proc == '0') {
+        echo "<td>No hay informaci&oacute;n disponible</td>";
+    } else {
+        $lista = explode(",", $proc);
+        foreach ($lista as $value) {
+            $qDestData = mysqli_query($condb, "SELECT
+            au_fd_procesofuente.id_au_fd_procesofuente,
+            au_fd_procesofuente.proceso,
+            sys_area.area
+            FROM au_fd_procesofuente
+            INNER JOIN sys_area
+            ON au_fd_procesofuente.id_sys_area = sys_area.id_sys_area
+            WHERE au_fd_procesofuente.id_au_fd_procesofuente = '$value'
+            ");
+            $row_qDestData = mysqli_fetch_assoc($qDestData);
+            $ar = $row_qDestData['area'];
+            $pr = $row_qDestData['proceso'];
+            echo'<tr>
+                <td>'.$ar.' - '.$pr.'</td>
+            </tr>';
+        }
+    }
+    
+} catch (Exception $e) {
+    echo 'Excepción capturada: ServerResponse';
+}
+
+break;
+
